@@ -1,4 +1,4 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import axios from "axios";
@@ -12,13 +12,7 @@ if (args.length < 4) {
 }
 
 const [SF_ORG_DOMAIN, CLIENT_ID, CLIENT_SECRET, AGENT_ID] = args;
-
-// Environment variables for API authentication
 const SF_API_HOST = "https://api.salesforce.com";
-// const SF_ORG_DOMAIN = process.env.SF_ORG_DOMAIN;
-// const CLIENT_ID = process.env.CLIENT_ID;
-// const CLIENT_SECRET = process.env.CLIENT_SECRET;
-// const AGENT_ID = process.env.AGENT_ID;
 
 // Global session ID storage
 let sessionId: string | null = null;
@@ -31,44 +25,45 @@ const server = new McpServer({
 
 // Function to authenticate and get an access token
 async function getAccessToken() {
-    if (!SF_ORG_DOMAIN || !CLIENT_ID || !CLIENT_SECRET) {
-      throw new Error("Missing required environment variables: SF_ORG_DOMAIN, CLIENT_ID, CLIENT_SECRET");
-    }
-  
-    const url = `${SF_ORG_DOMAIN}/services/oauth2/token`;
-    const headers = { "Content-Type": "application/x-www-form-urlencoded" };
-  
-    const data = new URLSearchParams();
-    data.append("grant_type", "client_credentials");
-    data.append("client_id", CLIENT_ID);
-    data.append("client_secret", CLIENT_SECRET);
-  
-    try {
-      const response = await axios.post(url, data.toString(), { headers });
-      
-      if (!response.data.access_token) {
-        throw new Error("Failed to obtain access token: No token received");
-      }
-  
-      return response.data.access_token;
-    } catch (error: unknown) {
-        handleApiError(error, "Authentication failed");
-      }
+  if (!SF_ORG_DOMAIN || !CLIENT_ID || !CLIENT_SECRET) {
+    throw new Error("Missing required environment variables: SF_ORG_DOMAIN, CLIENT_ID, CLIENT_SECRET");
   }
 
-  function handleApiError(error: unknown, contextMessage: string): never {
-    if (axios.isAxiosError(error)) {
-      const message = error.response?.data?.error_description || 
-                      error.response?.data?.message || 
-                      error.message || 
-                      "Unknown Axios error";
-      throw new Error(`${contextMessage}: ${message}`);
-    } else if (error instanceof Error) {
-      throw new Error(`${contextMessage}: ${error.message}`);
-    } else {
-      throw new Error(`${contextMessage}: An unknown error occurred`);
+  const url = `${SF_ORG_DOMAIN}/services/oauth2/token`;
+  const headers = { "Content-Type": "application/x-www-form-urlencoded" };
+
+  const data = new URLSearchParams();
+  data.append("grant_type", "client_credentials");
+  data.append("client_id", CLIENT_ID);
+  data.append("client_secret", CLIENT_SECRET);
+
+  try {
+    const response = await axios.post(url, data.toString(), { headers });
+
+    if (!response.data.access_token) {
+      throw new Error("Failed to obtain access token: No token received");
     }
+
+    return response.data.access_token;
+  } catch (error: unknown) {
+    handleApiError(error, "Authentication failed");
   }
+}
+
+function handleApiError(error: unknown, contextMessage: string): never {
+  if (axios.isAxiosError(error)) {
+    const message = error.response?.data?.error_description ||
+      error.response?.data?.message ||
+      error.message ||
+      "Unknown Axios error";
+    throw new Error(`${contextMessage}: ${message}`);
+  } else if (error instanceof Error) {
+    throw new Error(`${contextMessage}: ${error.message}`);
+  } else {
+    throw new Error(`${contextMessage}: An unknown error occurred`);
+  }
+}
+
 
 // Tool to start a session with Agentforce
 server.tool(
@@ -77,7 +72,7 @@ server.tool(
   async () => {
     const token = await getAccessToken();
     const url = `${SF_API_HOST}/einstein/ai-agent/v1/agents/${AGENT_ID}/sessions`;
-    
+
     const body = {
       externalSessionKey: new Date().toISOString(),
       instanceConfig: { endpoint: SF_ORG_DOMAIN },
@@ -99,7 +94,7 @@ server.tool(
         content: [{ type: "text", text: `Session started with ID: ${sessionId}` }],
       };
     } catch (error) {
-        handleApiError(error, "Failed to start session");
+      handleApiError(error, "Failed to start session");
     }
   }
 );
@@ -137,8 +132,8 @@ server.tool(
         content: [{ type: "text", text: response.data.messages[0]?.message || "No response from agent." }],
       };
     } catch (error) {
-        handleApiError(error, "Failed to send message");
-      
+      handleApiError(error, "Failed to send message");
+
     }
   }
 );
@@ -165,22 +160,21 @@ server.tool(
       sessionId = null;
       return { content: [{ type: "text", text: "Session ended successfully." }] };
     } catch (error) {
-        handleApiError(error, "Failed to end session");
+      handleApiError(error, "Failed to end session");
     }
   }
 );
 
-// Server Transport (Choose either Stdio or SSE)
-// const transport = new SSEServerTransport("/messages");
-// await server.connect(transport);
+
+//STDIO
 
 async function main() {
-    const transport = new StdioServerTransport();
-    await server.connect(transport);
-    console.error("Agentforce MCP Server running on stdio");
-  }
-  
-  main().catch((error) => {
-    console.error("Fatal error in main():", error);
-    process.exit(1);
-  });
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+  console.error("Agentforce MCP Server running on stdio");
+}
+
+main().catch((error) => {
+  console.error("Fatal error in main():", error);
+  process.exit(1);
+});
