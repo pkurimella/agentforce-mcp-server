@@ -23,6 +23,7 @@ This is an  MCP (Model Context Protocol) server for Salesforce's Agentforce Serv
 - Connected App with Client Credentials OAuth2 flow
 - MCP-compatible client (e.g. ChatGPT, Open Interpreter, or custom)
 
+
 ## 📦 Installation
 
 ```bash
@@ -60,6 +61,27 @@ Use an MCP-compatible client (like MCP Inspector) to call tools and verify respo
 
 ## 🛡️ Error Handling
 All errors are standardized using a centralized error handler. If something goes wrong (e.g., authentication failure), meaningful messages will be shown.
+
+
+## Claude Desktop Config
+ The following uses stdio so the mcp server is running locally. 
+```json
+{
+  "mcpServers": {
+    "agentforce" : {
+            "command": "node",
+            "args": [
+                "/path/to/directory/build/server.js",
+                "SALESFORCE_ORG_DOMAIN_URL",
+                "CONNECTEDAPP_CLIENT_ID",
+                "CONNECTEDAPP_CLIENT_SECRET",
+                "AGENT_ID"
+            ]
+        }
+  }
+}
+```
+
 
 ##💡 Notes
 
